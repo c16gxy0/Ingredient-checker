@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ingredient Part Scaler</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Ingredient Part Scaler</h1>
+      <p class="subtitle">Scale a recipe by one ingredient or by available limits.</p>
+    </header>
+
+    <main class="layout">
+      <section class="panel" aria-labelledby="ingredients-heading">
+        <h2 id="ingredients-heading">1. Ingredients</h2>
+
+        <form id="addForm" class="grid add-form" autocomplete="off">
+          <div>
+            <label for="add-name">Name</label>
+            <input id="add-name" required name="name" placeholder="Chicken" />
+          </div>
+            <div>
+              <label for="add-parts">Parts</label>
+              <input id="add-parts" required name="parts" type="number" min="0.0001" step="0.0001" placeholder="50" />
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn primary">Add</button>
+            </div>
+        </form>
+
+        <div class="note">
+          Parts can be the original grams (e.g. 50, 23, 17) or a simplified ratio (e.g. 50:23:17). Scaling is proportional.
+        </div>
+
+        <div class="table-wrapper" role="region" aria-label="Recipe Table">
+          <table id="recipeTable">
+            <thead>
+              <tr>
+                <th scope="col">Ingredient</th>
+                <th scope="col">Parts</th>
+                <th scope="col">Available</th>
+                <th scope="col">Needed</th>
+                <th scope="col">Leftover</th>
+                <th scope="col" class="actions-col">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Rows injected -->
+            </tbody>
+            <tfoot>
+              <tr>
+                <th>Total Parts</th>
+                <th id="totalParts">0</th>
+                <th colspan="4"></th>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <div class="buttons-row">
+          <button id="resetBtn" type="button" class="btn">Reset</button>
+          <button id="exportBtn" type="button" class="btn">Export JSON</button>
+          <button id="importBtn" type="button" class="btn">Import JSON</button>
+          <button id="clearStorageBtn" type="button" class="btn danger">Clear Saved</button>
+        </div>
+
+        <details class="import-panel" id="importPanel">
+          <summary>Import Data</summary>
+          <textarea id="importTextarea" placeholder='Paste JSON previously exported here'></textarea>
+          <div class="buttons-row">
+            <button id="confirmImportBtn" type="button" class="btn primary">Apply Import</button>
+            <button id="cancelImportBtn" type="button" class="btn">Cancel</button>
+          </div>
+          <div class="error" id="importError" hidden></div>
+        </details>
+
+      </section>
+
+      <section class="panel" aria-labelledby="scaling-heading">
+        <h2 id="scaling-heading">2. Scaling</h2>
+
+        <div class="field">
+          <label for="mode">Mode</label>
+          <select id="mode">
+            <option value="single">Scale from chosen ingredient</option>
+            <option value="limit">Use all available (limit mode)</option>
+          </select>
+        </div>
+
+        <div id="singleModeRow" class="field">
+          <label for="baseIngredient">Scale Using Ingredient</label>
+          <select id="baseIngredient"></select>
+        </div>
+
+        <div class="field">
+          <label for="rounding">Rounding</label>
+          <select id="rounding">
+            <option value="none">No rounding</option>
+            <option value="0">0 decimals</option>
+            <option value="1">1 decimal</option>
+            <option value="2" selected>2 decimals</option>
+            <option value="3">3 decimals</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="autoCalcToggle" class="inline">
+            <input type="checkbox" id="autoCalcToggle" checked />
+            Auto Recalculate
+          </label>
+        </div>
+
+        <div class="buttons-row">
+          <button id="recalcBtn" type="button" class="btn primary">Recalculate</button>
+        </div>
+
+        <div id="stats" class="stats"></div>
+        <div id="limitDetails" class="limit-details"></div>
+
+        <div class="hint">
+          Enter an “Available” amount for one ingredient to scale in Single mode.  
+          In Limit mode, any “Available” values act as constraints; the smallest feasible scale is chosen.
+        </div>
+      </section>
+    </main>
+
+    <section class="panel" aria-labelledby="how-heading">
+      <h2 id="how-heading">How To Use</h2>
+      <ol class="howto">
+        <li>Add all ingredients with their original parts (they can be original gram values).</li>
+        <li>Enter an Available amount (how much you have on hand).</li>
+        <li>Single mode: choose the base ingredient that drives scaling.</li>
+        <li>Limit mode: enter availability for any number of ingredients; the app finds the limiting one(s).</li>
+        <li>Adjust rounding as needed; copy/export JSON to save or share.</li>
+        <li>Use Import JSON to restore a saved set.</li>
+      </ol>
+    </section>
+
+    <footer class="footer">
+      <p>Ingredient Part Scaler &middot; MIT Licensed &middot; Build your own variations easily.</p>
+    </footer>
+  </div>
+
+  <script src="js/utils.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
