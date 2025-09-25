@@ -1,151 +1,308 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Ingredient Part Scaler</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <link rel="stylesheet" href="css/styles.css" />
+<meta charset="UTF-8" />
+<title>Simple Recipe Part Scaler</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+  :root {
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    color-scheme: light dark;
+  }
+  body {
+    margin: 0;
+    padding: 1.25rem;
+    line-height: 1.4;
+    background: canvas;
+    color: canvastext;
+  }
+  h1 {
+    margin: 0 0 1rem;
+    font-size: 1.2rem;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    max-width: 480px;
+  }
+  th, td {
+    padding: .5rem .55rem;
+    border-bottom: 1px solid rgba(0,0,0,.15);
+    font-size: .85rem;
+  }
+  th {
+    text-align: left;
+    font-size: .65rem;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    opacity: .7;
+  }
+  tbody tr.driver {
+    background: #ffe9b5;
+    color: #222;
+  }
+  @media (prefers-color-scheme: dark) {
+    tbody tr.driver {
+      background: #4b3b10;
+      color: #f9e7c0;
+    }
+  }
+  input[type=number] {
+    width: 100%;
+    box-sizing: border-box;
+    padding: .35rem .4rem;
+    font-size: .85rem;
+  }
+  input[type=text] {
+    width: 100%;
+    box-sizing: border-box;
+    padding: .35rem .4rem;
+    font-size: .85rem;
+  }
+  .small-note {
+    font-size: .65rem;
+    margin-top: .75rem;
+    max-width: 480px;
+    opacity: .75;
+  }
+  .row-inline {
+    display: flex;
+    gap: .75rem;
+    flex-wrap: wrap;
+    align-items: center;
+    margin: 1rem 0 .5rem;
+    max-width: 480px;
+  }
+  button {
+    padding: .45rem .8rem;
+    font-size: .7rem;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    border: 1px solid #999;
+    background: #eee;
+    cursor: pointer;
+  }
+  @media (prefers-color-scheme: dark) {
+    button {
+      background: #2d3136;
+      color: #f2f2f2;
+      border-color: #555;
+    }
+    th, td { border-color: #333; }
+  }
+  .flex-grow { flex: 1; }
+  .center { text-align:center; }
+  .parts-input { width: 70px; }
+  .amount-input { width: 100px; }
+  .driver-indicator {
+    font-size: .55rem;
+    padding: .15rem .4rem;
+    border-radius: 1rem;
+    background: #333;
+    color: #fff;
+    margin-left: .4rem;
+    letter-spacing: .05em;
+    display: inline-block;
+  }
+  @media (prefers-color-scheme: light) {
+    .driver-indicator { background:#222; }
+  }
+</style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <h1>Ingredient Part Scaler</h1>
-      <p class="subtitle">Scale a recipe by one ingredient or by available limits.</p>
-    </header>
+  <h1>Simple Recipe Part Scaler</h1>
 
-    <main class="layout">
-      <section class="panel" aria-labelledby="ingredients-heading">
-        <h2 id="ingredients-heading">1. Ingredients</h2>
-
-        <form id="addForm" class="grid add-form" autocomplete="off">
-          <div>
-            <label for="add-name">Name</label>
-            <input id="add-name" required name="name" placeholder="Chicken" />
-          </div>
-            <div>
-              <label for="add-parts">Parts</label>
-              <input id="add-parts" required name="parts" type="number" min="0.0001" step="0.0001" placeholder="50" />
-            </div>
-            <div class="form-actions">
-              <button type="submit" class="btn primary">Add</button>
-            </div>
-        </form>
-
-        <div class="note">
-          Parts can be the original grams (e.g. 50, 23, 17) or a simplified ratio (e.g. 50:23:17). Scaling is proportional.
-        </div>
-
-        <div class="table-wrapper" role="region" aria-label="Recipe Table">
-          <table id="recipeTable">
-            <thead>
-              <tr>
-                <th scope="col">Ingredient</th>
-                <th scope="col">Parts</th>
-                <th scope="col">Available</th>
-                <th scope="col">Needed</th>
-                <th scope="col">Leftover</th>
-                <th scope="col" class="actions-col">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <!-- Rows injected -->
-            </tbody>
-            <tfoot>
-              <tr>
-                <th>Total Parts</th>
-                <th id="totalParts">0</th>
-                <th colspan="4"></th>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-
-        <div class="buttons-row">
-          <button id="resetBtn" type="button" class="btn">Reset</button>
-          <button id="exportBtn" type="button" class="btn">Export JSON</button>
-          <button id="importBtn" type="button" class="btn">Import JSON</button>
-          <button id="clearStorageBtn" type="button" class="btn danger">Clear Saved</button>
-        </div>
-
-        <details class="import-panel" id="importPanel">
-          <summary>Import Data</summary>
-          <textarea id="importTextarea" placeholder='Paste JSON previously exported here'></textarea>
-          <div class="buttons-row">
-            <button id="confirmImportBtn" type="button" class="btn primary">Apply Import</button>
-            <button id="cancelImportBtn" type="button" class="btn">Cancel</button>
-          </div>
-          <div class="error" id="importError" hidden></div>
-        </details>
-
-      </section>
-
-      <section class="panel" aria-labelledby="scaling-heading">
-        <h2 id="scaling-heading">2. Scaling</h2>
-
-        <div class="field">
-          <label for="mode">Mode</label>
-          <select id="mode">
-            <option value="single">Scale from chosen ingredient</option>
-            <option value="limit">Use all available (limit mode)</option>
-          </select>
-        </div>
-
-        <div id="singleModeRow" class="field">
-          <label for="baseIngredient">Scale Using Ingredient</label>
-          <select id="baseIngredient"></select>
-        </div>
-
-        <div class="field">
-          <label for="rounding">Rounding</label>
-          <select id="rounding">
-            <option value="none">No rounding</option>
-            <option value="0">0 decimals</option>
-            <option value="1">1 decimal</option>
-            <option value="2" selected>2 decimals</option>
-            <option value="3">3 decimals</option>
-          </select>
-        </div>
-
-        <div class="field">
-          <label for="autoCalcToggle" class="inline">
-            <input type="checkbox" id="autoCalcToggle" checked />
-            Auto Recalculate
-          </label>
-        </div>
-
-        <div class="buttons-row">
-          <button id="recalcBtn" type="button" class="btn primary">Recalculate</button>
-        </div>
-
-        <div id="stats" class="stats"></div>
-        <div id="limitDetails" class="limit-details"></div>
-
-        <div class="hint">
-          Enter an “Available” amount for one ingredient to scale in Single mode.  
-          In Limit mode, any “Available” values act as constraints; the smallest feasible scale is chosen.
-        </div>
-      </section>
-    </main>
-
-    <section class="panel" aria-labelledby="how-heading">
-      <h2 id="how-heading">How To Use</h2>
-      <ol class="howto">
-        <li>Add all ingredients with their original parts (they can be original gram values).</li>
-        <li>Enter an Available amount (how much you have on hand).</li>
-        <li>Single mode: choose the base ingredient that drives scaling.</li>
-        <li>Limit mode: enter availability for any number of ingredients; the app finds the limiting one(s).</li>
-        <li>Adjust rounding as needed; copy/export JSON to save or share.</li>
-        <li>Use Import JSON to restore a saved set.</li>
-      </ol>
-    </section>
-
-    <footer class="footer">
-      <p>Ingredient Part Scaler &middot; MIT Licensed &middot; Build your own variations easily.</p>
-    </footer>
+  <div class="row-inline">
+    <button id="resetBtn">Reset</button>
+    <label style="font-size:.7rem; display:flex; gap:.4rem; align-items:center;">
+      Rounding
+      <select id="rounding" style="font-size:.7rem; padding:.2rem .3rem;">
+        <option value="none">None</option>
+        <option value="0">0</option>
+        <option value="1">0.1</option>
+        <option value="2" selected>0.01</option>
+      </select>
+    </label>
+    <span id="scaleInfo" style="font-size:.7rem; opacity:.7;"></span>
   </div>
 
-  <script src="js/utils.js"></script>
-  <script src="js/storage.js"></script>
-  <script src="js/app.js"></script>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:45%;">Item</th>
+        <th style="width:25%;">Parts</th>
+        <th style="width:30%;">Amount</th>
+      </tr>
+    </thead>
+    <tbody id="tbody">
+      <!-- rows -->
+    </tbody>
+  </table>
+
+  <div class="small-note">
+    Type a number in one Amount cell (grams, ml, etc.). That row becomes the driver and all others scale automatically:
+    amount_i = parts_i * (driver_amount / driver_parts).
+    Clear the driver cell to stop scaling.
+  </div>
+
+<script>
+(function() {
+  // --- Editable initial recipe ---
+  const initialData = [
+    { name: 'Chicken', parts: 50 },
+    { name: 'Cream Cheese', parts: 23 },
+    { name: 'Oat Flour', parts: 17 }
+  ];
+
+  // --- State ---
+  let rows = [];
+  let driverIndex = null; // which row is currently driving the scale
+  let lastUserEditIndex = null;
+
+  const tbody = document.getElementById('tbody');
+  const roundingSelect = document.getElementById('rounding');
+  const scaleInfo = document.getElementById('scaleInfo');
+  const resetBtn = document.getElementById('resetBtn');
+
+  function cloneInitial() {
+    rows = initialData.map(r => ({
+      name: r.name,
+      parts: r.parts,
+      amount: '' // user enters
+    }));
+    driverIndex = null;
+    lastUserEditIndex = null;
+  }
+
+  function render() {
+    tbody.innerHTML = rows.map((r,i) => {
+      const isDriver = i === driverIndex;
+      return `<tr data-i="${i}" class="${isDriver ? 'driver' : ''}">
+        <td>
+          <input type="text" data-field="name" value="${escapeHtml(r.name)}" />
+          ${isDriver ? '<span class="driver-indicator">DRIVER</span>' : ''}
+        </td>
+        <td>
+          <input type="number" class="parts-input" step="0.0001" min="0.0001"
+            data-field="parts" value="${r.parts}" />
+        </td>
+        <td>
+          <input type="number" class="amount-input" step="0.0001"
+            data-field="amount" value="${r.amount === '' ? '' : r.amount}" />
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  function escapeHtml(str) {
+    return (str+'').replace(/[&<>"']/g, s => ({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    }[s]));
+  }
+
+  function roundingFn() {
+    const mode = roundingSelect.value;
+    if (mode === 'none') return v => v;
+    const decimals = Number(mode);
+    return v => Number(v.toFixed(decimals));
+  }
+
+  function recomputeFromDriver() {
+    if (driverIndex == null) {
+      scaleInfo.textContent = '';
+      return;
+    }
+    const driverRow = rows[driverIndex];
+    if (driverRow.amount === '' || !isFinite(driverRow.amount) || driverRow.amount <= 0 || driverRow.parts <= 0) {
+      scaleInfo.textContent = '';
+      return;
+    }
+    const scale = driverRow.amount / driverRow.parts;
+    const round = roundingFn();
+
+    rows.forEach((r,i) => {
+      if (i === driverIndex) return;
+      r.amount = round(r.parts * scale);
+    });
+    scaleInfo.textContent = 'Scale: ' + formatNumber(scale, round);
+  }
+
+  function formatNumber(v, fn) {
+    if (!isFinite(v)) return '';
+    return fn(v);
+  }
+
+  // Event delegation
+  tbody.addEventListener('input', e => {
+    const tr = e.target.closest('tr');
+    if (!tr) return;
+    const i = Number(tr.getAttribute('data-i'));
+    const field = e.target.getAttribute('data-field');
+    const row = rows[i];
+    if (!row) return;
+
+    if (field === 'name') {
+      row.name = e.target.value;
+      // no recalculation needed
+    } else if (field === 'parts') {
+      const val = Number(e.target.value);
+      if (val > 0) {
+        row.parts = val;
+        // if this row is driver we recalc others
+        if (i === driverIndex) {
+          recomputeFromDriver();
+        } else if (driverIndex != null) {
+          // parts change in non-driver row: just recompute that row from scale
+          recomputeFromDriver();
+        }
+      }
+    } else if (field === 'amount') {
+      const raw = e.target.value;
+      if (raw === '') {
+        row.amount = '';
+        // If this was the driver, we remove driver mode entirely
+        if (i === driverIndex) {
+          driverIndex = null;
+          scaleInfo.textContent = '';
+        }
+      } else {
+        const num = Number(raw);
+        if (num > 0) {
+          row.amount = num;
+          driverIndex = i;
+          lastUserEditIndex = i;
+          recomputeFromDriver();
+        } else {
+            row.amount = '';
+            if (i === driverIndex) {
+              driverIndex = null;
+              scaleInfo.textContent = '';
+            }
+        }
+      }
+    }
+    // Re-render to update driver highlighting & driver badge
+    render();
+  });
+
+  roundingSelect.addEventListener('change', () => {
+    if (driverIndex != null) {
+      recomputeFromDriver();
+      render();
+    }
+  });
+
+  resetBtn.addEventListener('click', () => {
+    if (!confirm('Reset to original example?')) return;
+    cloneInitial();
+    render();
+    scaleInfo.textContent = '';
+  });
+
+  // Init
+  cloneInitial();
+  render();
+})();
+</script>
 </body>
 </html>
