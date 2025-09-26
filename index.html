@@ -23,12 +23,12 @@
   table {
     border-collapse: collapse;
     width: 100%;
-    max-width: 480px;
+    max-width: 520px;
   }
   th, td {
     padding: .5rem .55rem;
     border-bottom: 1px solid rgba(0,0,0,.15);
-    font-size: .85rem;
+    font-size: .9rem;
   }
   th {
     text-align: left;
@@ -46,24 +46,19 @@
       background: #4b3b10;
       color: #f9e7c0;
     }
+    th, td { border-color: #333; }
   }
-  input[type=number] {
+  input[type=number], input[type=text] {
     width: 100%;
     box-sizing: border-box;
     padding: .35rem .4rem;
-    font-size: .85rem;
-  }
-  input[type=text] {
-    width: 100%;
-    box-sizing: border-box;
-    padding: .35rem .4rem;
-    font-size: .85rem;
+    font-size: .9rem;
   }
   .small-note {
-    font-size: .65rem;
+    font-size: .7rem;
     margin-top: .75rem;
-    max-width: 480px;
-    opacity: .75;
+    max-width: 520px;
+    opacity: .8;
   }
   .row-inline {
     display: flex;
@@ -71,7 +66,7 @@
     flex-wrap: wrap;
     align-items: center;
     margin: 1rem 0 .5rem;
-    max-width: 480px;
+    max-width: 520px;
   }
   button {
     padding: .45rem .8rem;
@@ -88,24 +83,21 @@
       color: #f2f2f2;
       border-color: #555;
     }
-    th, td { border-color: #333; }
   }
-  .flex-grow { flex: 1; }
-  .center { text-align:center; }
-  .parts-input { width: 70px; }
-  .amount-input { width: 100px; }
+  .parts-input { width: 90px; }
+  .amount-input { width: 120px; }
   .driver-indicator {
     font-size: .55rem;
     padding: .15rem .4rem;
     border-radius: 1rem;
-    background: #333;
+    background: #222;
     color: #fff;
     margin-left: .4rem;
-    letter-spacing: .05em;
+    letter-spacing: .06em;
     display: inline-block;
   }
-  @media (prefers-color-scheme: light) {
-    .driver-indicator { background:#222; }
+  @media (prefers-color-scheme: dark) {
+    .driver-indicator { background:#111; color:#f6f6f6; }
   }
 </style>
 </head>
@@ -114,16 +106,16 @@
 
   <div class="row-inline">
     <button id="resetBtn">Reset</button>
-    <label style="font-size:.7rem; display:flex; gap:.4rem; align-items:center;">
+    <label style="font-size:.8rem; display:flex; gap:.4rem; align-items:center;">
       Rounding
-      <select id="rounding" style="font-size:.7rem; padding:.2rem .3rem;">
+      <select id="rounding" style="font-size:.8rem; padding:.2rem .3rem;">
         <option value="none">None</option>
         <option value="0">0</option>
         <option value="1">0.1</option>
         <option value="2" selected>0.01</option>
       </select>
     </label>
-    <span id="scaleInfo" style="font-size:.7rem; opacity:.7;"></span>
+    <span id="scaleInfo" style="font-size:.8rem; opacity:.75;"></span>
   </div>
 
   <table>
@@ -135,14 +127,14 @@
       </tr>
     </thead>
     <tbody id="tbody">
-      <!-- rows -->
+      <!-- rows created once, then updated in-place -->
     </tbody>
   </table>
 
   <div class="small-note">
     Type a number in one Amount cell (grams, ml, etc.). That row becomes the driver and all others scale automatically:
     amount_i = parts_i * (driver_amount / driver_parts).
-    Clear the driver cell to stop scaling.
+    Clear the driver cell to stop scaling. You can keep typing—no re-rendering happens while you type.
   </div>
 
 <script>
@@ -156,13 +148,15 @@
 
   // --- State ---
   let rows = [];
-  let driverIndex = null; // which row is currently driving the scale
-  let lastUserEditIndex = null;
+  let driverIndex = null;
 
   const tbody = document.getElementById('tbody');
   const roundingSelect = document.getElementById('rounding');
   const scaleInfo = document.getElementById('scaleInfo');
   const resetBtn = document.getElementById('resetBtn');
+
+  // Cached element refs for in-place updates
+  let rowEls = []; // [{tr, nameInput, partsInput, amountInput, badge}...]
 
   function cloneInitial() {
     rows = initialData.map(r => ({
@@ -171,16 +165,15 @@
       amount: '' // user enters
     }));
     driverIndex = null;
-    lastUserEditIndex = null;
   }
 
-  function render() {
+  function buildTableOnce() {
+    // Build rows HTML once
     tbody.innerHTML = rows.map((r,i) => {
-      const isDriver = i === driverIndex;
-      return `<tr data-i="${i}" class="${isDriver ? 'driver' : ''}">
+      return `<tr data-i="${i}">
         <td>
           <input type="text" data-field="name" value="${escapeHtml(r.name)}" />
-          ${isDriver ? '<span class="driver-indicator">DRIVER</span>' : ''}
+          <span class="driver-indicator" data-role="badge" hidden>DRIVER</span>
         </td>
         <td>
           <input type="number" class="parts-input" step="0.0001" min="0.0001"
@@ -188,10 +181,21 @@
         </td>
         <td>
           <input type="number" class="amount-input" step="0.0001"
-            data-field="amount" value="${r.amount === '' ? '' : r.amount}" />
+            data-field="amount" value="${rows[i].amount === '' ? '' : rows[i].amount}" />
         </td>
       </tr>`;
     }).join('');
+
+    // Cache refs
+    rowEls = Array.from(tbody.querySelectorAll('tr')).map(tr => {
+      return {
+        tr,
+        nameInput: tr.querySelector('input[data-field="name"]'),
+        partsInput: tr.querySelector('input[data-field="parts"]'),
+        amountInput: tr.querySelector('input[data-field="amount"]'),
+        badge: tr.querySelector('[data-role="badge"]')
+      };
+    });
   }
 
   function escapeHtml(str) {
@@ -207,23 +211,46 @@
     return v => Number(v.toFixed(decimals));
   }
 
+  function updateDriverHighlight() {
+    rowEls.forEach((el, i) => {
+      if (i === driverIndex) {
+        el.tr.classList.add('driver');
+        el.badge.hidden = false;
+      } else {
+        el.tr.classList.remove('driver');
+        el.badge.hidden = true;
+      }
+    });
+  }
+
   function recomputeFromDriver() {
     if (driverIndex == null) {
       scaleInfo.textContent = '';
       return;
     }
-    const driverRow = rows[driverIndex];
-    if (driverRow.amount === '' || !isFinite(driverRow.amount) || driverRow.amount <= 0 || driverRow.parts <= 0) {
+    const driver = rows[driverIndex];
+    const driverEl = rowEls[driverIndex];
+
+    const raw = driverEl.amountInput.value;
+    const num = Number(raw);
+    if (!isFinite(num) || num <= 0 || driver.parts <= 0) {
       scaleInfo.textContent = '';
       return;
     }
-    const scale = driverRow.amount / driverRow.parts;
+
+    // Update state for driver
+    driver.amount = num;
+
+    const scale = num / driver.parts;
     const round = roundingFn();
 
-    rows.forEach((r,i) => {
+    rows.forEach((r, i) => {
       if (i === driverIndex) return;
-      r.amount = round(r.parts * scale);
+      const needed = r.parts * scale;
+      r.amount = round(needed);
+      rowEls[i].amountInput.value = r.amount;
     });
+
     scaleInfo.textContent = 'Scale: ' + formatNumber(scale, round);
   }
 
@@ -232,76 +259,75 @@
     return fn(v);
   }
 
-  // Event delegation
+  // Event delegation (no full re-render)
   tbody.addEventListener('input', e => {
     const tr = e.target.closest('tr');
     if (!tr) return;
     const i = Number(tr.getAttribute('data-i'));
     const field = e.target.getAttribute('data-field');
     const row = rows[i];
-    if (!row) return;
 
     if (field === 'name') {
       row.name = e.target.value;
-      // no recalculation needed
-    } else if (field === 'parts') {
+      // nothing else to do
+      return;
+    }
+
+    if (field === 'parts') {
       const val = Number(e.target.value);
-      if (val > 0) {
+      if (isFinite(val) && val > 0) {
         row.parts = val;
-        // if this row is driver we recalc others
-        if (i === driverIndex) {
-          recomputeFromDriver();
-        } else if (driverIndex != null) {
-          // parts change in non-driver row: just recompute that row from scale
-          recomputeFromDriver();
-        }
+        // if there's a driver, recompute others
+        if (driverIndex != null) recomputeFromDriver();
       }
-    } else if (field === 'amount') {
+      return;
+    }
+
+    if (field === 'amount') {
       const raw = e.target.value;
+
       if (raw === '') {
-        row.amount = '';
-        // If this was the driver, we remove driver mode entirely
+        // If emptied the driver cell, remove driver
         if (i === driverIndex) {
           driverIndex = null;
+          updateDriverHighlight();
           scaleInfo.textContent = '';
         }
-      } else {
-        const num = Number(raw);
-        if (num > 0) {
-          row.amount = num;
-          driverIndex = i;
-          lastUserEditIndex = i;
-          recomputeFromDriver();
-        } else {
-            row.amount = '';
-            if (i === driverIndex) {
-              driverIndex = null;
-              scaleInfo.textContent = '';
-            }
-        }
+        rows[i].amount = '';
+        return;
       }
+
+      const num = Number(raw);
+      if (isFinite(num) && num > 0) {
+        // This row becomes (or remains) the driver
+        driverIndex = i;
+        updateDriverHighlight();
+        // Don't overwrite the user's current input; only compute others
+        recomputeFromDriver();
+      }
+      // If invalid/incomplete (like "1e" or "-"), do nothing: user keeps typing
+      return;
     }
-    // Re-render to update driver highlighting & driver badge
-    render();
   });
 
   roundingSelect.addEventListener('change', () => {
     if (driverIndex != null) {
       recomputeFromDriver();
-      render();
     }
   });
 
   resetBtn.addEventListener('click', () => {
     if (!confirm('Reset to original example?')) return;
     cloneInitial();
-    render();
+    buildTableOnce();
+    updateDriverHighlight();
     scaleInfo.textContent = '';
   });
 
   // Init
   cloneInitial();
-  render();
+  buildTableOnce();
+  updateDriverHighlight();
 })();
 </script>
 </body>
