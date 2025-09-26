@@ -269,7 +269,6 @@
 
     if (field === 'name') {
       row.name = e.target.value;
-      // nothing else to do
       return;
     }
 
@@ -277,7 +276,6 @@
       const val = Number(e.target.value);
       if (isFinite(val) && val > 0) {
         row.parts = val;
-        // if there's a driver, recompute others
         if (driverIndex != null) recomputeFromDriver();
       }
       return;
@@ -287,7 +285,6 @@
       const raw = e.target.value;
 
       if (raw === '') {
-        // If emptied the driver cell, remove driver
         if (i === driverIndex) {
           driverIndex = null;
           updateDriverHighlight();
@@ -299,13 +296,10 @@
 
       const num = Number(raw);
       if (isFinite(num) && num > 0) {
-        // This row becomes (or remains) the driver
         driverIndex = i;
         updateDriverHighlight();
-        // Don't overwrite the user's current input; only compute others
         recomputeFromDriver();
       }
-      // If invalid/incomplete (like "1e" or "-"), do nothing: user keeps typing
       return;
     }
   });
