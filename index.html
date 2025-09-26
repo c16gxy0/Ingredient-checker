@@ -100,6 +100,42 @@
   }
   .parts-input { width: 90px; }
   .amount-input { width: 120px; }
+
+  /* Inline remove button inside Item column */
+  .item-cell {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+  }
+  .remove-btn {
+    min-width: 1.6rem;
+    height: 1.6rem;
+    padding: 0;
+    border-radius: 999px;
+    border: 1px solid #999;
+    background: #f2f2f2;
+    color: #222;
+    line-height: 1.6rem;
+    text-align: center;
+    font-weight: 700;
+    font-size: .9rem;
+    cursor: pointer;
+  }
+  .remove-btn:hover {
+    background: #ffd9d9;
+    border-color: #e08c8c;
+  }
+  @media (prefers-color-scheme: dark) {
+    .remove-btn {
+      background: #38404a;
+      color: #f6f6f6;
+      border-color: #555;
+    }
+    .remove-btn:hover {
+      background: #5a2f2f;
+      border-color: #8a4b4b;
+    }
+  }
 </style>
 </head>
 <body>
@@ -191,7 +227,10 @@
     const r = rows[i];
     return `<tr data-i="${i}">
       <td>
-        <input type="text" data-field="name" value="${escapeHtml(r.name)}" />
+        <div class="item-cell">
+          <input type="text" data-field="name" value="${escapeHtml(r.name)}" />
+          <button type="button" class="remove-btn" data-action="remove" title="Remove this item" aria-label="Remove">×</button>
+        </div>
       </td>
       <td>
         <input type="number" class="parts-input" step="0.0001" min="0.0001"
@@ -211,7 +250,6 @@
 
   function appendOneRow(i) {
     tbody.insertAdjacentHTML('beforeend', buildRowHTML(i));
-    // cache only the last row newly added
     const tr = tbody.querySelector('tr:last-child');
     rowEls.push({
       tr,
@@ -230,6 +268,12 @@
         amountInput: tr.querySelector('input[data-field="amount"]')
       };
     });
+  }
+
+  function rebuildIndicesAndCache() {
+    const trs = Array.from(tbody.querySelectorAll('tr'));
+    trs.forEach((tr, idx) => tr.setAttribute('data-i', idx));
+    cacheRowEls();
   }
 
   function escapeHtml(str) {
@@ -270,7 +314,6 @@
       return;
     }
 
-    // Update state for driver
     driver.amount = num;
 
     const scale = num / driver.parts;
@@ -336,6 +379,37 @@
     }
   });
 
+  // Remove button click (event delegation)
+  tbody.addEventListener('click', e => {
+    const btn = e.target.closest('[data-action="remove"]');
+    if (!btn) return;
+    const tr = btn.closest('tr');
+    if (!tr) return;
+    const i = Number(tr.getAttribute('data-i'));
+
+    // Update state
+    rows.splice(i, 1);
+    // Remove DOM row
+    tr.remove();
+
+    // Adjust driver index
+    if (driverIndex === null) {
+      // nothing
+    } else if (i === driverIndex) {
+      driverIndex = null;
+      scaleInfo.textContent = '';
+    } else if (i < driverIndex) {
+      driverIndex -= 1;
+    }
+
+    // Re-index and refresh caches/highlights
+    rebuildIndicesAndCache();
+    updateDriverHighlight();
+
+    // Recompute if a driver still exists
+    if (driverIndex != null) recomputeFromDriver();
+  });
+
   roundingSelect.addEventListener('change', () => {
     if (driverIndex != null) {
       recomputeFromDriver();
@@ -361,11 +435,10 @@
     const idx = rows.length;
     rows.push({ name, parts, amount: '' });
     appendOneRow(idx);
-    // If we have a current driver, compute the new row’s amount immediately
+    rebuildIndicesAndCache(); // keep indices consistent (append case is already fine, but safe)
     if (driverIndex != null) {
       recomputeFromDriver();
     }
-    // Clear the inputs for convenience
     newName.value = '';
     newParts.value = '';
     newName.focus();
